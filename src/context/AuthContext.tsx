@@ -4,52 +4,101 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 interface User {
+    id: number;
     email: string;
-    name: string;
+    name: string | null;
+    balance: number;
 }
 
 interface AuthContextType {
     user: User | null;
-    login: (email: string) => void;
-    signup: (email: string, name: string) => void;
-    logout: () => void;
+    login: (email: string, password: string) => Promise<void>;
+    signup: (email: string, name: string, password: string) => Promise<void>;
+    logout: () => Promise<void>;
     isAuthenticated: boolean;
+    isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const router = useRouter();
 
     useEffect(() => {
-        // Check local storage for persisted session
-        const storedUser = localStorage.getItem("gaming_user");
-        if (storedUser) {
-            setUser(JSON.parse(storedUser));
-        }
+        checkAuth();
     }, []);
 
-    const login = (email: string) => {
-        // Mock login
-        const mockUser = { email, name: email.split("@")[0] };
-        setUser(mockUser);
-        localStorage.setItem("gaming_user", JSON.stringify(mockUser));
-        router.push("/dashboard");
+    const checkAuth = async () => {
+        try {
+            const res = await fetch("/api/auth/me");
+            if (res.ok) {
+                const data = await res.json();
+                setUser(data.user);
+            } else {
+                setUser(null);
+            }
+        } catch (error) {
+            console.error("Auth check failed", error);
+            setUser(null);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const signup = (email: string, name: string) => {
-        // Mock signup
-        const mockUser = { email, name };
-        setUser(mockUser);
-        localStorage.setItem("gaming_user", JSON.stringify(mockUser));
-        router.push("/dashboard");
+    const login = async (email: string, password: string) => {
+        try {
+            const res = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password }),
+            });
+
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.error || "Login failed");
+            }
+
+            const data = await res.json();
+            setUser(data.user);
+            router.push("/dashboard");
+        } catch (error) {
+            console.error("Login error", error);
+            throw error;
+        }
     };
 
-    const logout = () => {
-        setUser(null);
-        localStorage.removeItem("gaming_user");
-        router.push("/login");
+    const signup = async (email: string, name: string, password: string) => {
+        try {
+            const res = await fetch("/api/auth/signup", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, name, password }),
+            });
+
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.error || "Signup failed");
+            }
+
+            const data = await res.json();
+            setUser(data.user);
+            router.push("/dashboard");
+        } catch (error) {
+            console.error("Signup error", error);
+            throw error;
+        }
+    };
+
+    const logout = async () => {
+        try {
+            await fetch("/api/auth/logout", { method: "POST" });
+            setUser(null);
+            router.push("/login");
+        } catch (error) {
+            console.error("Logout error", error);
+        }
     };
 
     return (
@@ -60,6 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 signup,
                 logout,
                 isAuthenticated: !!user,
+                isLoading,
             }}
         >
             {children}

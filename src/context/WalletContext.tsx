@@ -1,69 +1,84 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { useAuth } from "./AuthContext";
 
 interface WalletContextType {
     balance: number;
-    addFunds: (amount: number) => void;
+    addFunds: (amount: number) => Promise<void>;
     updateBalance: (amount: number) => void; // amount can be negative
     transactions: Transaction[];
+    isLoading: boolean;
 }
 
 interface Transaction {
-    id: string;
-    type: "deposit" | "withdraw" | "game_win" | "game_loss";
+    id: number;
+    type: string;
     amount: number;
-    date: string;
+    createdAt: string;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
+    const { user } = useAuth();
     const [balance, setBalance] = useState(0);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        // Load balance from local storage
-        const storedBalance = localStorage.getItem("gaming_balance");
-        if (storedBalance) {
-            setBalance(parseFloat(storedBalance));
+        if (user) {
+            setBalance(user.balance);
+            fetchTransactions();
+        } else {
+            setBalance(0);
+            setTransactions([]);
         }
-        const storedTransactions = localStorage.getItem("gaming_transactions");
-        if (storedTransactions) {
-            setTransactions(JSON.parse(storedTransactions));
+    }, [user]);
+
+    const fetchTransactions = async () => {
+        try {
+            const res = await fetch("/api/wallet/transactions");
+            if (res.ok) {
+                const data = await res.json();
+                setTransactions(data.transactions);
+            }
+        } catch (error) {
+            console.error("Failed to fetch transactions", error);
+        } finally {
+            setIsLoading(false);
         }
-    }, []);
+    };
 
-    useEffect(() => {
-        // Save to local storage
-        localStorage.setItem("gaming_balance", balance.toString());
-        localStorage.setItem("gaming_transactions", JSON.stringify(transactions));
-    }, [balance, transactions]);
+    const addFunds = async (amount: number) => {
+        try {
+            const res = await fetch("/api/wallet/deposit", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ amount }),
+            });
 
-    const addFunds = (amount: number) => {
-        setBalance((prev) => prev + amount);
-        const newTransaction: Transaction = {
-            id: Date.now().toString(),
-            type: "deposit",
-            amount,
-            date: new Date().toISOString(),
-        };
-        setTransactions((prev) => [newTransaction, ...prev]);
+            if (!res.ok) {
+                throw new Error("Failed to add funds");
+            }
+
+            const data = await res.json();
+            setBalance(data.balance);
+            fetchTransactions(); // Refresh history
+        } catch (error) {
+            console.error("Add funds error", error);
+            throw error;
+        }
     };
 
     const updateBalance = (amount: number) => {
+        // This is for local optimistic updates during games
+        // Real sync should happen via API calls in the game logic
         setBalance((prev) => prev + amount);
-        const newTransaction: Transaction = {
-            id: Date.now().toString(),
-            type: amount >= 0 ? "game_win" : "game_loss",
-            amount: Math.abs(amount),
-            date: new Date().toISOString(),
-        };
-        setTransactions((prev) => [newTransaction, ...prev]);
     };
 
     return (
-        <WalletContext.Provider value={{ balance, addFunds, updateBalance, transactions }}>
+        <WalletContext.Provider value={{ balance, addFunds, updateBalance, transactions, isLoading }}>
             {children}
         </WalletContext.Provider>
     );

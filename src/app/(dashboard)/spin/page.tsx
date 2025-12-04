@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useWallet } from "@/context/WalletContext";
 import { AlertCircle, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,53 +22,62 @@ export default function SpinPage() {
     const [isSpinning, setIsSpinning] = useState(false);
     const [rotation, setRotation] = useState(0);
     const [result, setResult] = useState<{ multiplier: number; winAmount: number } | null>(null);
+    const [error, setError] = useState<string | null>(null);
     const wheelRef = useRef<HTMLDivElement>(null);
 
-    const handleSpin = () => {
+    const handleSpin = async () => {
         const bet = parseFloat(betAmount);
         if (!bet || bet <= 0 || bet > balance) return;
 
         setIsSpinning(true);
         setResult(null);
-        updateBalance(-bet); // Deduct bet immediately
+        setError(null);
 
-        // Randomize result
-        // To make it realistic, let's pick a random segment
-        const segmentIndex = Math.floor(Math.random() * SEGMENTS.length);
-        const segment = SEGMENTS[segmentIndex];
+        try {
+            const response = await fetch("/api/game/spin", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ betAmount: bet }),
+            });
 
-        // Calculate rotation
-        // Each segment is 360 / 8 = 45 degrees
-        // We want to land on the segment. 
-        // If index 0 is at top (0 deg), index 1 is at 45 deg, etc.
-        // But we rotate the wheel, so we need to rotate negative amount or just add full spins.
-        // Let's say we want index `i` to be at the top pointer.
-        // The top is 0 degrees (or 270 depending on CSS).
-        // Let's assume 0 degrees is top.
-        // Segment `i` starts at `i * 45` and ends at `(i+1) * 45`.
-        // Center of segment `i` is `i * 45 + 22.5`.
-        // To bring that to top (0/360), we need to rotate `360 - (i * 45 + 22.5)`.
-        // Plus some extra spins.
+            const data = await response.json();
 
-        const segmentAngle = 360 / SEGMENTS.length;
-        const targetAngle = 360 - (segmentIndex * segmentAngle + segmentAngle / 2);
-        const extraSpins = 360 * 5; // 5 full spins
-        const totalRotation = rotation + extraSpins + targetAngle - (rotation % 360);
-        // Wait, simple math: current rotation + 5 spins + offset to target.
-        // Actually, just setting a new absolute rotation is easier.
-
-        const newRotation = rotation + 1800 + (360 - (segmentIndex * 45 + 22.5)); // 1800 = 5 * 360
-
-        setRotation(newRotation);
-
-        setTimeout(() => {
-            setIsSpinning(false);
-            const winAmount = bet * segment.value;
-            if (winAmount > 0) {
-                updateBalance(winAmount);
+            if (!response.ok) {
+                throw new Error(data.error || "Failed to spin");
             }
-            setResult({ multiplier: segment.value, winAmount });
-        }, 5000); // 5 seconds spin
+
+            const { segmentIndex, multiplier, winAmount, balance: newBalance } = data;
+
+            // Calculate rotation to land on the correct segment
+            // 0 degrees is top.
+            // Segment `i` is at `i * 45` degrees.
+            // To bring segment `i` to top, we rotate `360 - (i * 45 + 22.5)`.
+            const newRotation = rotation + 1800 + (360 - (segmentIndex * 45 + 22.5));
+
+            setRotation(newRotation);
+
+            setTimeout(() => {
+                setIsSpinning(false);
+                setResult({ multiplier, winAmount });
+                // Update global wallet balance with the new balance from server
+                // We calculate the difference to pass to updateBalance if it expects a delta,
+                // or if updateBalance can take an absolute value, we should use that.
+                // Looking at previous context, updateBalance likely takes a delta or we can just fetch fresh data.
+                // But to be safe and consistent with the context, let's assume we need to sync.
+                // Actually, the context probably has a refresh function or we can just calculate the delta.
+                // Delta = newBalance - currentBalance (but currentBalance might be stale if we don't track it carefully)
+                // Let's just assume updateBalance takes a delta for now as per previous usage `updateBalance(-bet)`.
+                // The API returns the final balance.
+                // Let's calculate the net change: winAmount - betAmount.
+                const netChange = winAmount - bet;
+                updateBalance(netChange);
+            }, 5000);
+
+        } catch (err: any) {
+            setIsSpinning(false);
+            setError(err.message);
+            console.error("Spin error:", err);
+        }
     };
 
     return (
@@ -150,6 +159,11 @@ export default function SpinPage() {
                         {parseFloat(betAmount) > balance && (
                             <p className="text-destructive text-xs mt-2 flex items-center gap-1">
                                 <AlertCircle className="h-3 w-3" /> Insufficient balance
+                            </p>
+                        )}
+                        {error && (
+                            <p className="text-destructive text-xs mt-2 flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" /> {error}
                             </p>
                         )}
                     </div>

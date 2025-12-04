@@ -8,26 +8,28 @@ import { cn } from "@/lib/utils";
 const AMOUNTS = [10, 25, 50, 100, 250, 500];
 
 export default function WalletPage() {
-    const { balance, addFunds } = useWallet();
+    const { balance, addFunds, transactions } = useWallet();
     const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
     const [customAmount, setCustomAmount] = useState("");
     const [isProcessing, setIsProcessing] = useState(false);
     const [success, setSuccess] = useState(false);
 
-    const handleAddFunds = () => {
+    const handleAddFunds = async () => {
         const amount = selectedAmount || parseFloat(customAmount);
         if (!amount || amount <= 0) return;
 
         setIsProcessing(true);
-        // Simulate API call
-        setTimeout(() => {
-            addFunds(amount);
-            setIsProcessing(false);
+        try {
+            await addFunds(amount);
             setSuccess(true);
             setTimeout(() => setSuccess(false), 3000);
             setSelectedAmount(null);
             setCustomAmount("");
-        }, 1500);
+        } catch (error) {
+            alert("Failed to add funds");
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     return (
@@ -114,6 +116,31 @@ export default function WalletPage() {
                             "Add Funds Now"
                         )}
                     </button>
+                </div>
+            </div>
+
+            {/* Transaction History */}
+            <div className="bg-card border border-border rounded-xl p-6">
+                <h3 className="text-xl font-bold mb-6">Transaction History</h3>
+                <div className="space-y-4">
+                    {transactions.length === 0 ? (
+                        <p className="text-muted-foreground text-center py-8">No transactions yet.</p>
+                    ) : (
+                        transactions.map((tx) => (
+                            <div key={tx.id} className="flex items-center justify-between p-4 border-b border-border last:border-0">
+                                <div>
+                                    <p className="font-medium capitalize">{tx.type.replace("_", " ")}</p>
+                                    <p className="text-sm text-muted-foreground">{new Date(tx.createdAt).toLocaleDateString()}</p>
+                                </div>
+                                <span className={cn(
+                                    "font-bold",
+                                    tx.type === "deposit" || tx.type === "game_win" ? "text-green-500" : "text-red-500"
+                                )}>
+                                    {tx.type === "deposit" || tx.type === "game_win" ? "+" : "-"}${tx.amount.toFixed(2)}
+                                </span>
+                            </div>
+                        ))
+                    )}
                 </div>
             </div>
         </div>
