@@ -89,7 +89,7 @@ export default function DashboardPage() {
                                             {t.type === "game_loss" ? "-" : "+"}${t.amount.toFixed(2)}
                                         </td>
                                         <td className="px-6 py-4 text-muted-foreground">
-                                            {new Date(t.date).toLocaleDateString()}
+                                            {new Date(t.createdAt).toLocaleDateString()}
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className="px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">

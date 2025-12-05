@@ -1,29 +1,29 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useWallet } from "@/context/WalletContext";
-import { AlertCircle, Trophy } from "lucide-react";
+import { AlertCircle, Trophy, History, Coins } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const SEGMENTS = [
-    { label: "2x", value: 2, color: "#00ff9d" },
-    { label: "0x", value: 0, color: "#ef4444" },
-    { label: "1.5x", value: 1.5, color: "#00e5ff" },
-    { label: "0x", value: 0, color: "#ef4444" },
-    { label: "3x", value: 3, color: "#f59e0b" },
-    { label: "0x", value: 0, color: "#ef4444" },
-    { label: "1.2x", value: 1.2, color: "#a855f7" },
-    { label: "0.5x", value: 0.5, color: "#ef4444" },
-];
+import { SEGMENTS } from "@/lib/game-config";
 
 export default function SpinPage() {
-    const { balance, updateBalance } = useWallet();
+    const { balance, updateBalance, refreshTransactions } = useWallet();
     const [betAmount, setBetAmount] = useState<string>("");
     const [isSpinning, setIsSpinning] = useState(false);
     const [rotation, setRotation] = useState(0);
     const [result, setResult] = useState<{ multiplier: number; winAmount: number } | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [history, setHistory] = useState<{ multiplier: number; win: boolean }[]>([]);
     const wheelRef = useRef<HTMLDivElement>(null);
+
+    // Lights animation state
+    const [activeLight, setActiveLight] = useState(0);
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setActiveLight((prev) => (prev + 1) % 20); // 20 lights
+        }, 100);
+        return () => clearInterval(interval);
+    }, []);
 
     const handleSpin = async () => {
         const bet = parseFloat(betAmount);
@@ -46,9 +46,9 @@ export default function SpinPage() {
                 throw new Error(data.error || "Failed to spin");
             }
 
-            const { segmentIndex, multiplier, winAmount, balance: newBalance } = data;
+            const { segmentIndex, multiplier, winAmount } = data;
 
-            // Calculate rotation to land on the correct segment
+            // Calculate rotation
             // 0 degrees is top.
             // Segment `i` is at `i * 45` degrees.
             // To bring segment `i` to top, we rotate `360 - (i * 45 + 22.5)`.
@@ -59,18 +59,13 @@ export default function SpinPage() {
             setTimeout(() => {
                 setIsSpinning(false);
                 setResult({ multiplier, winAmount });
-                // Update global wallet balance with the new balance from server
-                // We calculate the difference to pass to updateBalance if it expects a delta,
-                // or if updateBalance can take an absolute value, we should use that.
-                // Looking at previous context, updateBalance likely takes a delta or we can just fetch fresh data.
-                // But to be safe and consistent with the context, let's assume we need to sync.
-                // Actually, the context probably has a refresh function or we can just calculate the delta.
-                // Delta = newBalance - currentBalance (but currentBalance might be stale if we don't track it carefully)
-                // Let's just assume updateBalance takes a delta for now as per previous usage `updateBalance(-bet)`.
-                // The API returns the final balance.
-                // Let's calculate the net change: winAmount - betAmount.
+
+                // Update history
+                setHistory(prev => [{ multiplier, win: winAmount > 0 }, ...prev].slice(0, 5));
+
                 const netChange = winAmount - bet;
                 updateBalance(netChange);
+                refreshTransactions(); // Update transaction history
             }, 5000);
 
         } catch (err: any) {
@@ -80,123 +75,216 @@ export default function SpinPage() {
         }
     };
 
+    const setMaxBet = () => {
+        setBetAmount(balance.toString());
+    };
+
+    const setHalfBet = () => {
+        setBetAmount((balance / 2).toFixed(2));
+    };
+
     return (
-        <div className="max-w-4xl mx-auto flex flex-col items-center gap-8">
-            <div className="text-center">
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
-                    Spin & Win
+        <div className="min-h-[80vh] flex flex-col items-center justify-center p-4">
+            <div className="text-center mb-8">
+                <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] mb-2 uppercase tracking-wider">
+                    Mega Spin
                 </h1>
-                <p className="text-muted-foreground">Double your money in seconds!</p>
+                <p className="text-yellow-200/80 font-medium tracking-widest uppercase text-sm">Win Big or Go Home</p>
             </div>
 
-            <div className="flex flex-col md:flex-row gap-12 items-center">
-                {/* Wheel Container */}
-                <div className="relative">
-                    {/* Pointer */}
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20 w-8 h-8 bg-foreground clip-path-polygon-[50%_100%,_0_0,_100%_0] shadow-xl"></div>
+            <div className="flex flex-col lg:flex-row gap-16 items-center justify-center w-full max-w-6xl">
+                {/* Wheel Section */}
+                <div className="relative group">
+                    {/* Outer Glow */}
+                    <div className="absolute inset-0 bg-yellow-500/20 blur-[100px] rounded-full pointer-events-none" />
 
-                    {/* Wheel */}
-                    <div
-                        ref={wheelRef}
-                        className="w-80 h-80 md:w-96 md:h-96 rounded-full border-4 border-border relative overflow-hidden shadow-[0_0_50px_rgba(0,255,157,0.2)] transition-transform cubic-bezier(0.1, 0.7, 0.1, 1)"
-                        style={{
-                            transform: `rotate(${rotation}deg)`,
-                            transitionDuration: isSpinning ? "5s" : "0s",
-                        }}
-                    >
-                        {SEGMENTS.map((seg, i) => (
+                    {/* Wheel Border with Lights */}
+                    <div className="relative w-[340px] h-[340px] md:w-[450px] md:h-[450px] rounded-full bg-gradient-to-b from-red-900 to-red-950 p-4 shadow-[0_0_50px_rgba(0,0,0,0.5)] border-4 border-yellow-600/50">
+                        {/* Lights */}
+                        {Array.from({ length: 20 }).map((_, i) => (
                             <div
                                 key={i}
-                                className="absolute w-full h-full top-0 left-0"
+                                className={cn(
+                                    "absolute w-3 h-3 rounded-full shadow-[0_0_10px_currentColor] transition-all duration-300",
+                                    (i + activeLight) % 2 === 0 ? "bg-yellow-300 shadow-yellow-300" : "bg-red-900/50"
+                                )}
                                 style={{
-                                    transform: `rotate(${i * 45}deg)`,
+                                    top: "50%",
+                                    left: "50%",
+                                    transform: `rotate(${i * 18}deg) translate(165px) md:translate(215px)`, // Adjust radius based on container size
+                                }}
+                            />
+                        ))}
+
+                        {/* The Wheel */}
+                        <div className="w-full h-full rounded-full overflow-hidden border-4 border-yellow-500/30 relative bg-[#1a1a1a]">
+                            <div
+                                ref={wheelRef}
+                                className="w-full h-full transition-transform cubic-bezier(0.1, 0.7, 0.1, 1)"
+                                style={{
+                                    transform: `rotate(${rotation}deg)`,
+                                    transitionDuration: isSpinning ? "5s" : "0s",
                                 }}
                             >
-                                <div
-                                    className="w-full h-full absolute top-0 left-0 flex justify-center pt-4 font-bold text-black"
-                                    style={{
-                                        backgroundColor: seg.color,
-                                        clipPath: "polygon(50% 50%, 0 0, 100% 0)",
-                                        transform: "rotate(22.5deg)", // Adjust to align segment
-                                    }}
-                                >
-                                    <span className="transform -rotate-22.5 mt-4 text-lg">{seg.label}</span>
-                                </div>
+                                {SEGMENTS.map((seg, i) => (
+                                    <div
+                                        key={i}
+                                        className="absolute w-full h-full top-0 left-0 origin-center"
+                                        style={{
+                                            transform: `rotate(${i * 45}deg)`,
+                                        }}
+                                    >
+                                        <div
+                                            className="absolute w-full h-full top-0 left-0 flex justify-center pt-6"
+                                            style={{
+                                                background: `conic-gradient(from -22.5deg at 50% 50%, ${seg.color} 0deg, ${seg.color} 45deg, transparent 45deg)`,
+                                                clipPath: "polygon(50% 50%, 0 0, 100% 0)",
+                                            }}
+                                        >
+                                            <span
+                                                className="transform rotate-22.5 text-lg md:text-2xl font-black drop-shadow-md"
+                                                style={{ color: seg.textColor }}
+                                            >
+                                                {seg.label}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
+                        </div>
 
-                    {/* Center Cap */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-card rounded-full border-2 border-primary z-10 flex items-center justify-center shadow-lg">
-                        <div className="w-8 h-8 bg-primary rounded-full animate-pulse"></div>
+                        {/* Center Cap */}
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-yellow-300 to-yellow-600 rounded-full shadow-[0_4px_10px_rgba(0,0,0,0.5)] z-10 flex items-center justify-center border-4 border-yellow-200">
+                            <div className="w-10 h-10 md:w-12 md:h-12 bg-black/20 rounded-full flex items-center justify-center">
+                                <Trophy className="w-6 h-6 text-yellow-100" />
+                            </div>
+                        </div>
+
+                        {/* Pointer */}
+                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-20 w-12 h-14 filter drop-shadow-lg">
+                            <svg viewBox="0 0 24 24" fill="url(#gold-gradient)" className="w-full h-full">
+                                <defs>
+                                    <linearGradient id="gold-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stopColor="#fcd34d" />
+                                        <stop offset="50%" stopColor="#d97706" />
+                                        <stop offset="100%" stopColor="#fcd34d" />
+                                    </linearGradient>
+                                </defs>
+                                <path d="M12 22L5 5h14l-7 17z" stroke="#78350f" strokeWidth="1" />
+                            </svg>
+                        </div>
                     </div>
                 </div>
 
-                {/* Controls */}
-                <div className="w-full max-w-sm space-y-6 bg-card border border-border p-6 rounded-xl">
-                    <div className="flex justify-between items-center text-sm">
-                        <span className="text-muted-foreground">Your Balance</span>
-                        <span className="font-bold text-primary">${balance.toFixed(2)}</span>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-2">
-                            Bet Amount
-                        </label>
-                        <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
-                                $
+                {/* Controls Section */}
+                <div className="w-full max-w-md space-y-6">
+                    {/* Balance Card */}
+                    <div className="bg-zinc-900/80 backdrop-blur-md border border-zinc-800 p-6 rounded-2xl shadow-xl">
+                        <div className="flex justify-between items-center mb-6">
+                            <div className="flex items-center gap-2 text-zinc-400">
+                                <Coins className="w-5 h-5 text-yellow-500" />
+                                <span className="font-medium">Balance</span>
+                            </div>
+                            <span className="text-2xl font-bold text-white font-mono">
+                                ${balance.toFixed(2)}
                             </span>
-                            <input
-                                type="number"
-                                value={betAmount}
-                                onChange={(e) => setBetAmount(e.target.value)}
-                                className="w-full pl-8 pr-4 py-3 bg-secondary/50 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
-                                placeholder="0.00"
-                                disabled={isSpinning}
-                            />
                         </div>
-                        {parseFloat(betAmount) > balance && (
-                            <p className="text-destructive text-xs mt-2 flex items-center gap-1">
-                                <AlertCircle className="h-3 w-3" /> Insufficient balance
-                            </p>
-                        )}
-                        {error && (
-                            <p className="text-destructive text-xs mt-2 flex items-center gap-1">
-                                <AlertCircle className="h-3 w-3" /> {error}
-                            </p>
-                        )}
+
+                        <div className="space-y-4">
+                            <div className="relative">
+                                <input
+                                    type="number"
+                                    value={betAmount}
+                                    onChange={(e) => setBetAmount(e.target.value)}
+                                    className="w-full bg-black/50 border border-zinc-700 rounded-xl py-4 pl-4 pr-24 text-white text-lg font-medium focus:outline-none focus:border-yellow-500/50 transition-colors"
+                                    placeholder="Bet Amount"
+                                    disabled={isSpinning}
+                                />
+                                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+                                    <button
+                                        onClick={setHalfBet}
+                                        className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-zinc-300 rounded-lg transition-colors uppercase"
+                                        disabled={isSpinning}
+                                    >
+                                        1/2
+                                    </button>
+                                    <button
+                                        onClick={setMaxBet}
+                                        className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-yellow-500 rounded-lg transition-colors uppercase"
+                                        disabled={isSpinning}
+                                    >
+                                        Max
+                                    </button>
+                                </div>
+                            </div>
+
+                            {parseFloat(betAmount) > balance && (
+                                <p className="text-red-500 text-xs flex items-center gap-1 animate-pulse">
+                                    <AlertCircle className="h-3 w-3" /> Insufficient funds
+                                </p>
+                            )}
+
+                            {error && (
+                                <p className="text-red-500 text-xs flex items-center gap-1">
+                                    <AlertCircle className="h-3 w-3" /> {error}
+                                </p>
+                            )}
+
+                            <button
+                                onClick={handleSpin}
+                                disabled={isSpinning || !betAmount || parseFloat(betAmount) <= 0 || parseFloat(betAmount) > balance}
+                                className="w-full py-4 bg-gradient-to-b from-yellow-400 to-yellow-600 hover:from-yellow-300 hover:to-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed text-black font-black text-xl rounded-xl shadow-[0_4px_0_rgb(161,98,7)] active:shadow-none active:translate-y-[4px] transition-all uppercase tracking-wider"
+                            >
+                                {isSpinning ? "Spinning..." : "SPIN NOW"}
+                            </button>
+                        </div>
                     </div>
 
-                    <button
-                        onClick={handleSpin}
-                        disabled={isSpinning || !betAmount || parseFloat(betAmount) <= 0 || parseFloat(betAmount) > balance}
-                        className="w-full py-4 bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold rounded-lg transition-all transform hover:scale-[1.02] shadow-[0_0_20px_rgba(0,255,157,0.3)]"
-                    >
-                        {isSpinning ? "Spinning..." : "SPIN NOW"}
-                    </button>
-
+                    {/* Result Display */}
                     {result && (
                         <div className={cn(
-                            "mt-4 p-4 rounded-lg text-center animate-in fade-in slide-in-from-bottom-4",
-                            result.multiplier > 0 ? "bg-primary/20 border border-primary/50" : "bg-destructive/20 border border-destructive/50"
+                            "p-6 rounded-2xl text-center animate-in zoom-in duration-300 shadow-2xl border-2",
+                            result.multiplier > 0
+                                ? "bg-gradient-to-br from-green-900/90 to-green-950/90 border-green-500/50"
+                                : "bg-gradient-to-br from-red-900/90 to-red-950/90 border-red-500/50"
                         )}>
                             {result.multiplier > 0 ? (
-                                <div>
-                                    <h3 className="text-xl font-bold text-primary flex items-center justify-center gap-2">
-                                        <Trophy className="h-5 w-5" /> YOU WON!
+                                <div className="space-y-2">
+                                    <h3 className="text-3xl font-black text-green-400 flex items-center justify-center gap-2 uppercase italic">
+                                        <Trophy className="h-8 w-8" /> Big Win!
                                     </h3>
-                                    <p className="text-foreground">
-                                        Multiplier: {result.multiplier}x <br />
-                                        Winnings: ${result.winAmount.toFixed(2)}
+                                    <div className="text-5xl font-black text-white drop-shadow-lg">
+                                        ${result.winAmount.toFixed(2)}
+                                    </div>
+                                    <p className="text-green-200/60 font-medium uppercase tracking-widest text-sm">
+                                        {result.multiplier}x Multiplier
                                     </p>
                                 </div>
                             ) : (
-                                <div>
-                                    <h3 className="text-xl font-bold text-destructive">Better Luck Next Time</h3>
-                                    <p className="text-muted-foreground">You lost ${parseFloat(betAmount).toFixed(2)}</p>
+                                <div className="space-y-2">
+                                    <h3 className="text-2xl font-bold text-red-400 uppercase">No Luck</h3>
+                                    <p className="text-red-200/60">Try again to win big!</p>
                                 </div>
                             )}
+                        </div>
+                    )}
+
+                    {/* Recent History */}
+                    {history.length > 0 && (
+                        <div className="flex justify-center gap-2 mt-4">
+                            {history.map((h, i) => (
+                                <div
+                                    key={i}
+                                    className={cn(
+                                        "w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold border-2",
+                                        h.win
+                                            ? "bg-green-900/50 border-green-500 text-green-400"
+                                            : "bg-red-900/50 border-red-500 text-red-400"
+                                    )}
+                                >
+                                    {h.multiplier}x
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>

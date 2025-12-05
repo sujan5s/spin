@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { WalletProvider } from "@/context/WalletContext";
+import { GoogleAuthProvider } from "@/providers/GoogleAuthProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,11 +30,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
-        <AuthProvider>
-          <WalletProvider>
-            {children}
-          </WalletProvider>
-        </AuthProvider>
+        <GoogleAuthProvider clientId={process.env.GOOGLE_CLIENT_ID || "385258266258-4027iettuparmurmk7rjlm474frm27aa.apps.googleusercontent.com"}>
+          <AuthProvider>
+            <WalletProvider>
+              {children}
+            </WalletProvider>
+          </AuthProvider>
+        </GoogleAuthProvider>
       </body>
     </html>
   );

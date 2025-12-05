@@ -8,14 +8,30 @@ const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "default-s
 
 export async function POST(request: Request) {
     try {
-        const { email, name, password } = await request.json();
+        const { email, name, password, otp } = await request.json();
 
-        if (!email || !password) {
+        if (!email || !password || !otp) {
             return NextResponse.json(
-                { error: "Email and password are required" },
+                { error: "Email, password, and OTP are required" },
                 { status: 400 }
             );
         }
+
+        // Verify OTP
+        const otpRecord = await prisma.otpVerification.findUnique({
+            where: { email },
+        });
+
+        if (!otpRecord || otpRecord.otp !== otp) {
+            return NextResponse.json({ error: "Invalid OTP" }, { status: 400 });
+        }
+
+        if (new Date() > otpRecord.expiresAt) {
+            return NextResponse.json({ error: "OTP expired" }, { status: 400 });
+        }
+
+        // Delete OTP after successful verification
+        await prisma.otpVerification.delete({ where: { email } });
 
         // Check if user exists
         const existingUser = await prisma.user.findUnique({

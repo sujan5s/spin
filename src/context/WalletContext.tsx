@@ -6,7 +6,9 @@ import { useAuth } from "./AuthContext";
 interface WalletContextType {
     balance: number;
     addFunds: (amount: number) => Promise<void>;
+    withdrawFunds: (amount: number) => Promise<void>;
     updateBalance: (amount: number) => void; // amount can be negative
+    refreshTransactions: () => Promise<void>;
     transactions: Transaction[];
     isLoading: boolean;
 }
@@ -71,6 +73,28 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const withdrawFunds = async (amount: number) => {
+        try {
+            const res = await fetch("/api/wallet/withdraw", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ amount }),
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || "Failed to withdraw funds");
+            }
+
+            const data = await res.json();
+            setBalance(data.balance);
+            fetchTransactions(); // Refresh history
+        } catch (error) {
+            console.error("Withdraw funds error", error);
+            throw error;
+        }
+    };
+
     const updateBalance = (amount: number) => {
         // This is for local optimistic updates during games
         // Real sync should happen via API calls in the game logic
@@ -78,7 +102,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <WalletContext.Provider value={{ balance, addFunds, updateBalance, transactions, isLoading }}>
+        <WalletContext.Provider value={{ balance, addFunds, withdrawFunds, updateBalance, refreshTransactions: fetchTransactions, transactions, isLoading }}>
             {children}
         </WalletContext.Provider>
     );

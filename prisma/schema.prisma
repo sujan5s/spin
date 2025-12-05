@@ -9,7 +9,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -17,18 +17,49 @@ model User {
   id        Int           @id @default(autoincrement())
   email     String        @unique
   name      String?
-  password  String
+  password  String?       // Optional for Google Auth users
+  googleId  String?       @unique
   balance   Float         @default(0)
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
   transactions Transaction[]
+  notifications Notification[]
+  tickets       Ticket[]
+}
+
+model OtpVerification {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  otp       String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
 model Transaction {
   id        Int      @id @default(autoincrement())
   userId    Int
-  type      String   // "deposit", "withdraw", "game_win", "game_loss"
+  type      String   // "deposit", "withdraw", "game_win", "game_loss", "ticket_purchase"
   amount    Float
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  title     String
+  message   String
+  type      String   // "success", "error", "info"
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Ticket {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  amount    Float
+  status    String   @default("active") // "active", "won", "lost"
+  purchasedAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
 }
