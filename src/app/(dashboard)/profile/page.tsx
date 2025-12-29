@@ -3,6 +3,7 @@
 import { useAuth } from "@/context/AuthContext";
 import { useWallet } from "@/context/WalletContext";
 import { User, Mail, Calendar, Wallet, Trophy, History } from "lucide-react";
+import { TokenIcon } from "@/components/TokenIcon";
 
 export default function ProfilePage() {
     const { user } = useAuth();
@@ -43,7 +44,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="text-center">
                     <div className="text-sm text-muted-foreground mb-1">Current Balance</div>
-                    <div className="text-3xl font-bold text-primary">${balance.toFixed(2)}</div>
+                    <div className="text-3xl font-bold text-primary flex items-center justify-center gap-2"><TokenIcon size={32} />{balance.toFixed(2)}</div>
                 </div>
             </div>
 
@@ -80,7 +81,7 @@ export default function ProfilePage() {
                         </div>
                         <div>
                             <div className="text-sm text-muted-foreground">Total Won</div>
-                            <div className="text-2xl font-bold text-green-500">+${totalWonAmount.toFixed(2)}</div>
+                            <div className="text-2xl font-bold text-green-500 flex items-center gap-1">+<TokenIcon size={20} />{totalWonAmount.toFixed(2)}</div>
                         </div>
                     </div>
                 </div>
@@ -94,9 +95,9 @@ export default function ProfilePage() {
                         <div key={tx.id} className="flex items-center justify-between p-4 border-b border-border last:border-0 hover:bg-secondary/50 transition-colors rounded-lg">
                             <div className="flex items-center gap-4">
                                 <div className={`p-2 rounded-full ${tx.type === 'game_win' ? 'bg-green-500/10 text-green-500' :
-                                        tx.type === 'game_loss' ? 'bg-red-500/10 text-red-500' :
-                                            tx.type === 'deposit' ? 'bg-blue-500/10 text-blue-500' :
-                                                'bg-orange-500/10 text-orange-500'
+                                    tx.type === 'game_loss' ? 'bg-red-500/10 text-red-500' :
+                                        tx.type === 'deposit' ? 'bg-blue-500/10 text-blue-500' :
+                                            'bg-orange-500/10 text-orange-500'
                                     }`}>
                                     {tx.type === 'game_win' ? <Trophy className="h-4 w-4" /> :
                                         tx.type === 'game_loss' ? <History className="h-4 w-4" /> :
@@ -108,9 +109,9 @@ export default function ProfilePage() {
                                     <p className="text-sm text-muted-foreground">{new Date(tx.createdAt).toLocaleDateString()}</p>
                                 </div>
                             </div>
-                            <span className={`font-bold ${tx.type === 'deposit' || tx.type === 'game_win' ? 'text-green-500' : 'text-red-500'
+                            <span className={`font-bold flex items-center gap-1 ${tx.type === 'deposit' || tx.type === 'game_win' ? 'text-green-500' : 'text-red-500'
                                 }`}>
-                                {tx.type === 'deposit' || tx.type === 'game_win' ? '+' : '-'}${Math.abs(tx.amount).toFixed(2)}
+                                {tx.type === 'deposit' || tx.type === 'game_win' ? '+' : '-'}<TokenIcon size={14} />{Math.abs(tx.amount).toFixed(2)}
                             </span>
                         </div>
                     ))}

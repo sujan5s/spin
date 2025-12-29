@@ -2,9 +2,18 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useWallet } from "@/context/WalletContext";
-import { AlertCircle, Trophy, History, Coins } from "lucide-react";
+import { AlertCircle, Trophy, History, Coins, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SEGMENTS } from "@/lib/game-config";
+
+interface SpinSegment {
+    id: number;
+    label: string;
+    value: number;
+    color: string;
+    textColor: string;
+    probability: number;
+    isVisible: boolean;
+}
 
 export default function SpinPage() {
     const { balance, updateBalance, refreshTransactions } = useWallet();
@@ -14,6 +23,8 @@ export default function SpinPage() {
     const [result, setResult] = useState<{ multiplier: number; winAmount: number } | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [history, setHistory] = useState<{ multiplier: number; win: boolean }[]>([]);
+    const [segments, setSegments] = useState<SpinSegment[]>([]);
+    const [loading, setLoading] = useState(true);
     const wheelRef = useRef<HTMLDivElement>(null);
 
     // Lights animation state
@@ -22,6 +33,20 @@ export default function SpinPage() {
         const interval = setInterval(() => {
             setActiveLight((prev) => (prev + 1) % 20); // 20 lights
         }, 100);
+
+        // Fetch segments
+        fetch("/api/admin/spin-settings")
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) {
+                    setSegments(data);
+                } else {
+                    console.error("Failed to load segments", data);
+                }
+            })
+            .catch(err => console.error(err))
+            .finally(() => setLoading(false));
+
         return () => clearInterval(interval);
     }, []);
 
@@ -50,9 +75,15 @@ export default function SpinPage() {
 
             // Calculate rotation
             // 0 degrees is top.
-            // Segment `i` is at `i * 45` degrees.
-            // To bring segment `i` to top, we rotate `360 - (i * 45 + 22.5)`.
-            const newRotation = rotation + 1800 + (360 - (segmentIndex * 45 + 22.5));
+            // Segment `i` is at `i * (360 / segments.length)` degrees.
+            const segmentAngle = 360 / segments.length;
+            const targetRotation = 360 - (segmentIndex * segmentAngle);
+            const currentRotationMod = rotation % 360;
+            let distance = targetRotation - currentRotationMod;
+            if (distance < 0) distance += 360;
+
+            // Add at least 5 full spins (1800 degrees) + the distance to target
+            const newRotation = rotation + 1800 + distance;
 
             setRotation(newRotation);
 
@@ -82,6 +113,14 @@ export default function SpinPage() {
     const setHalfBet = () => {
         setBetAmount((balance / 2).toFixed(2));
     };
+
+    if (loading) {
+        return <div className="min-h-[80vh] flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-yellow-500" /></div>;
+    }
+
+    if (segments.length === 0) {
+        return <div className="min-h-[80vh] flex items-center justify-center text-red-500">Failed to load game configuration.</div>;
+    }
 
     return (
         <div className="min-h-[80vh] flex flex-col items-center justify-center p-4">
@@ -126,23 +165,23 @@ export default function SpinPage() {
                                     transitionDuration: isSpinning ? "5s" : "0s",
                                 }}
                             >
-                                {SEGMENTS.map((seg, i) => (
+                                {segments.map((seg, i) => (
                                     <div
                                         key={i}
                                         className="absolute w-full h-full top-0 left-0 origin-center"
                                         style={{
-                                            transform: `rotate(${i * 45}deg)`,
+                                            transform: `rotate(${i * (360 / segments.length)}deg)`,
                                         }}
                                     >
                                         <div
                                             className="absolute w-full h-full top-0 left-0 flex justify-center pt-6"
                                             style={{
-                                                background: `conic-gradient(from -22.5deg at 50% 50%, ${seg.color} 0deg, ${seg.color} 45deg, transparent 45deg)`,
-                                                clipPath: "polygon(50% 50%, 0 0, 100% 0)",
+                                                background: `conic-gradient(from -${360 / segments.length / 2}deg at 50% 50%, ${seg.color} 0deg, ${seg.color} ${360 / segments.length}deg, transparent ${360 / segments.length}deg)`,
+                                                clipPath: `polygon(50% 50%, 0 0, 100% 0)`, // Simplified clip path, might need adjustment for dynamic count
                                             }}
                                         >
                                             <span
-                                                className="transform rotate-22.5 text-lg md:text-2xl font-black drop-shadow-md"
+                                                className="text-lg md:text-2xl font-black drop-shadow-md"
                                                 style={{ color: seg.textColor }}
                                             >
                                                 {seg.label}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Search, ChevronRight, Trophy, Wallet, User as UserIcon } from "lucide-react";
+import { TokenIcon } from "@/components/TokenIcon";
 
 interface User {
     id: number;
@@ -81,7 +82,7 @@ export default function AdminUsersPage() {
                         </div>
                         <div>
                             <p className="text-sm text-gray-400">Total Holdings</p>
-                            <h3 className="text-2xl font-bold">${users.reduce((acc, u) => acc + u.balance, 0).toLocaleString()}</h3>
+                            <h3 className="text-2xl font-bold flex items-center gap-1"><TokenIcon size={24} />{users.reduce((acc, u) => acc + u.balance, 0).toLocaleString()}</h3>
                         </div>
                     </div>
                 </div>
@@ -132,8 +133,8 @@ export default function AdminUsersPage() {
                                         <td className="p-4 text-gray-400">
                                             {new Date(user.joinedAt).toLocaleDateString()}
                                         </td>
-                                        <td className="p-4 text-right font-medium text-green-400">
-                                            ${user.balance.toLocaleString()}
+                                        <td className="p-4 text-right font-medium text-green-400 flex justify-end items-center gap-1">
+                                            <TokenIcon size={14} />{user.balance.toLocaleString()}
                                         </td>
                                         <td className="p-4 text-center">
                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-400/10 text-yellow-500">

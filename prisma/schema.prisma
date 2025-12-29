@@ -58,8 +58,19 @@ model Notification {
 model Ticket {
   id        Int      @id @default(autoincrement())
   userId    Int
-  amount    Float
+  tokenNumber String   @unique
+  price     Float
   status    String   @default("active") // "active", "won", "lost"
   purchasedAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
+}
+
+model SpinSegment {
+  id        Int      @id @default(autoincrement())
+  label     String
+  value     Float
+  color     String
+  textColor String
+  probability Int    @default(0) // Percentage or weight
+  isVisible Boolean  @default(true)
 }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useWallet } from "@/context/WalletContext";
 import { CreditCard, Wallet, CheckCircle, AlertCircle, ArrowRight } from "lucide-react";
+import { TokenIcon } from "@/components/TokenIcon";
 import { cn } from "@/lib/utils";
 
 const AMOUNTS = [10, 25, 50, 100, 250, 500];
@@ -54,7 +55,7 @@ export default function WithdrawPage() {
                     </div>
                     <div>
                         <h3 className="text-lg font-medium text-muted-foreground">Available to Withdraw</h3>
-                        <div className="text-5xl font-bold text-foreground mt-2">${balance.toFixed(2)}</div>
+                        <div className="text-5xl font-bold text-foreground mt-2 flex items-center gap-2"><TokenIcon size={40} />{balance.toFixed(2)}</div>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-primary">
                         <CheckCircle className="h-4 w-4" /> Verified Account
@@ -83,7 +84,7 @@ export default function WithdrawPage() {
                                         : "bg-secondary/50 border-border hover:border-primary/50 text-foreground"
                                 )}
                             >
-                                ${amount}
+                                <TokenIcon size={14} className="mr-1" />{amount}
                             </button>
                         ))}
                     </div>
@@ -94,7 +95,7 @@ export default function WithdrawPage() {
                         </label>
                         <div className="relative">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
-                                $
+                                <TokenIcon size={16} />
                             </span>
                             <input
                                 type="number"
@@ -150,7 +151,7 @@ export default function WithdrawPage() {
                                     <p className="text-sm text-muted-foreground">{new Date(tx.createdAt).toLocaleDateString()}</p>
                                 </div>
                                 <span className="font-bold text-red-500">
-                                    -${tx.amount.toFixed(2)}
+                                    -<TokenIcon size={14} className="mx-0.5" />{tx.amount.toFixed(2)}
                                 </span>
                             </div>
                         ))

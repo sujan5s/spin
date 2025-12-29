@@ -47,11 +47,40 @@ export async function POST(request: Request) {
                 throw new Error("Insufficient balance");
             }
 
-            // 2. Determine outcome
-            // Simple random selection for now
-            const segmentIndex = Math.floor(Math.random() * SEGMENTS.length);
-            const segment = SEGMENTS[segmentIndex];
-            const multiplier = segment.value;
+            // 2. Determine outcome using Weighted Random Logic from Database
+
+            // @ts-ignore
+            let segments = await tx.spinSegment.findMany({
+                where: { isVisible: true },
+                orderBy: { id: 'asc' }
+            });
+
+            // Fallback to config if no segments in DB (safety check)
+            if (segments.length === 0) {
+                // Potentially seed here if transaction limits allow, or just throw error/use static
+                // For now, let's assume if it's empty we use static but mapped to same structure
+                segments = SEGMENTS.map(s => ({ ...s, probability: 10 }));
+            }
+
+            // Calculate Total Weight
+            const totalWeight = segments.reduce((sum: number, segment: any) => sum + segment.probability, 0);
+
+            // Random value between 0 and totalWeight
+            let random = Math.random() * totalWeight;
+
+            let selectedSegment = segments[0];
+            let segmentIndex = 0;
+
+            for (let i = 0; i < segments.length; i++) {
+                random -= segments[i].probability;
+                if (random <= 0) {
+                    selectedSegment = segments[i];
+                    segmentIndex = i;
+                    break;
+                }
+            }
+
+            const multiplier = selectedSegment.value;
             const winAmount = betAmount * multiplier;
             const profit = winAmount - betAmount; // Net change
 

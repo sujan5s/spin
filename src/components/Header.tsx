@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useWallet } from "@/context/WalletContext";
 import { useAuth } from "@/context/AuthContext";
 import { Bell, LogOut, User, Settings, X, Menu } from "lucide-react";
+import { TokenIcon } from "@/components/TokenIcon";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
@@ -101,7 +102,8 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                     {/* Balance Display */}
                     <div className="flex items-center rounded-full bg-secondary px-4 py-1.5 border border-border">
                         <span className="text-sm text-muted-foreground mr-2">Balance:</span>
-                        <span className="text-lg font-bold text-primary">${balance.toFixed(2)}</span>
+                        <TokenIcon className="mr-1" size={16} />
+                        <span className="text-lg font-bold text-primary">{balance.toFixed(2)}</span>
                     </div>
 
                     {/* Notifications */}
@@ -144,7 +146,11 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                                                             {new Date(notification.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                         </span>
                                                     </div>
-                                                    <p className="text-sm text-muted-foreground">{notification.message}</p>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {notification.message.split(/(\$)/g).map((part: string, i: number) =>
+                                                            part === "$" ? "₹" : part
+                                                        )}
+                                                    </p>
                                                 </div>
                                             ))
                                         )}
@@ -222,12 +228,16 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                             exit={{ opacity: 0, x: 20, scale: 0.9 }}
                             className="bg-card border border-border p-4 rounded-xl shadow-2xl w-80 pointer-events-auto flex items-start gap-3"
                         >
-                            <div className={`p-2 rounded-full ${toast.type === 'success' ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500'}`}>
-                                <Bell className="h-5 w-5" />
+                            <div className={`p-2 rounded-full ${toast.type === 'success' ? 'bg-yellow-500/10 text-yellow-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                                {toast.type === 'success' ? <TokenIcon size={20} /> : <Bell className="h-5 w-5" />}
                             </div>
                             <div className="flex-1">
                                 <h4 className="font-semibold text-sm">{toast.title}</h4>
-                                <p className="text-xs text-muted-foreground mt-1">{toast.message}</p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    {toast.message.split(/(\$)/g).map((part: string, i: number) =>
+                                        part === "$" ? "₹" : part
+                                    )}
+                                </p>
                             </div>
                             <button
                                 onClick={() => setToasts(prev => prev.filter(t => t.toastId !== toast.toastId))}

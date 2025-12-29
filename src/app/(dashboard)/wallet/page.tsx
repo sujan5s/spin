@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useWallet } from "@/context/WalletContext";
 import { CreditCard, Wallet, CheckCircle } from "lucide-react";
+import { TokenIcon } from "@/components/TokenIcon";
 import { cn } from "@/lib/utils";
 
 const AMOUNTS = [10, 25, 50, 100, 250, 500];
@@ -47,7 +48,7 @@ export default function WalletPage() {
                     </div>
                     <div>
                         <h3 className="text-lg font-medium text-muted-foreground">Current Balance</h3>
-                        <div className="text-5xl font-bold text-foreground mt-2">${balance.toFixed(2)}</div>
+                        <div className="text-5xl font-bold text-foreground mt-2 flex items-center gap-2"><TokenIcon size={40} />{balance.toFixed(2)}</div>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-primary">
                         <CheckCircle className="h-4 w-4" /> Verified Account
@@ -75,7 +76,7 @@ export default function WalletPage() {
                                         : "bg-secondary/50 border-border hover:border-primary/50 text-foreground"
                                 )}
                             >
-                                ${amount}
+                                <TokenIcon size={14} className="mr-1" />{amount}
                             </button>
                         ))}
                     </div>
@@ -86,7 +87,7 @@ export default function WalletPage() {
                         </label>
                         <div className="relative">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
-                                $
+                                <TokenIcon size={16} />
                             </span>
                             <input
                                 type="number"
@@ -133,10 +134,10 @@ export default function WalletPage() {
                                     <p className="text-sm text-muted-foreground">{new Date(tx.createdAt).toLocaleDateString()}</p>
                                 </div>
                                 <span className={cn(
-                                    "font-bold",
-                                    tx.type === "deposit" || tx.type === "game_win" ? "text-green-500" : "text-red-500"
+                                    "font-bold flex items-center gap-0.5",
+                                    tx.amount > 0 ? "text-green-500" : "text-red-500"
                                 )}>
-                                    {tx.type === "deposit" || tx.type === "game_win" ? "+" : "-"}${tx.amount.toFixed(2)}
+                                    {tx.amount > 0 ? "+" : "-"}<TokenIcon size={14} />{Math.abs(tx.amount).toFixed(2)}
                                 </span>
                             </div>
                         ))

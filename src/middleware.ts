@@ -24,6 +24,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // Redirect authenticated users away from auth pages
+    // Redirect authenticated users away from auth pages
     if (pathname === "/login" || pathname === "/signup") {
         if (token) {
             try {

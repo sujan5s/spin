@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { LayoutDashboard, Users, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, LogOut, Trophy, Settings } from "lucide-react";
 
 export default async function AdminDashboardLayout({
     children,
@@ -30,11 +30,14 @@ export default async function AdminDashboardLayout({
                         <Users className="w-5 h-5" />
                         Users Management
                     </Link>
-                    {/* Placeholder for future links */}
-                    {/* <Link href="/admin/settings" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+                    <Link href="/admin/lucky-draw" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+                        <Trophy className="w-5 h-5" />
+                        Lucky Draw
+                    </Link>
+                    <Link href="/admin/spin-settings" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
                         <Settings className="w-5 h-5" />
-                        Settings
-                    </Link> */}
+                        Spin Settings
+                    </Link>
                 </nav>
 
                 <div className="p-4 border-t border-gray-800">

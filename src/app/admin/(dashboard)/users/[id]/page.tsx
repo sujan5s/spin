@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { ArrowLeft, Clock, ArrowUpRight, ArrowDownLeft, Receipt, Gamepad2 } from "lucide-react";
+import { TokenIcon } from "@/components/TokenIcon";
 
 // Types
 interface Transaction {
@@ -72,7 +73,7 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                 </div>
                 <div className="ml-auto text-right">
                     <p className="text-sm text-gray-400">Current Balance</p>
-                    <p className="text-3xl font-bold text-green-400">${user.balance.toLocaleString()}</p>
+                    <p className="text-3xl font-bold text-green-400 flex items-center justify-end gap-1"><TokenIcon size={32} />{user.balance.toLocaleString()}</p>
                 </div>
             </div>
 
@@ -117,8 +118,8 @@ export default function UserDetailsPage({ params }: { params: Promise<{ id: stri
                                             </div>
                                         </div>
                                     </div>
-                                    <div className={`font-bold ${tx.type === 'deposit' || tx.type.includes('win') ? 'text-green-500' : 'text-red-500'}`}>
-                                        {tx.type === 'deposit' || tx.type.includes('win') ? '+' : '-'}${tx.amount}
+                                    <div className={`font-bold ${tx.type === 'deposit' || tx.type.includes('win') ? 'text-green-500' : 'text-red-500'} flex items-center gap-0.5`}>
+                                        {tx.type === 'deposit' || tx.type.includes('win') ? '+' : '-'}<TokenIcon size={14} />{tx.amount}
                                     </div>
                                 </div>
                             ))

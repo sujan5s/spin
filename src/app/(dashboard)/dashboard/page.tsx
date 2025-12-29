@@ -2,7 +2,8 @@
 
 import { useWallet } from "@/context/WalletContext";
 import { useAuth } from "@/context/AuthContext";
-import { ArrowUpRight, ArrowDownLeft, Trophy, DollarSign } from "lucide-react";
+import { ArrowUpRight, ArrowDownLeft, Trophy } from "lucide-react";
+import { TokenIcon } from "@/components/TokenIcon";
 import { cn } from "@/lib/utils";
 
 export default function DashboardPage() {
@@ -29,23 +30,23 @@ export default function DashboardPage() {
                 <div className="p-6 bg-card border border-border rounded-xl shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-sm font-medium text-muted-foreground">Total Balance</h3>
-                        <DollarSign className="h-5 w-5 text-primary" />
+                        <TokenIcon className="h-5 w-5" />
                     </div>
-                    <div className="text-3xl font-bold text-foreground">${balance.toFixed(2)}</div>
+                    <div className="text-3xl font-bold text-foreground flex items-center gap-1"><TokenIcon size={24} />{balance.toFixed(2)}</div>
                 </div>
                 <div className="p-6 bg-card border border-border rounded-xl shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-sm font-medium text-muted-foreground">Total Winnings</h3>
                         <Trophy className="h-5 w-5 text-accent" />
                     </div>
-                    <div className="text-3xl font-bold text-accent">+${totalWins.toFixed(2)}</div>
+                    <div className="text-3xl font-bold text-accent flex items-center gap-1">+<TokenIcon size={24} />{totalWins.toFixed(2)}</div>
                 </div>
                 <div className="p-6 bg-card border border-border rounded-xl shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-sm font-medium text-muted-foreground">Total Deposited</h3>
                         <ArrowUpRight className="h-5 w-5 text-secondary-foreground" />
                     </div>
-                    <div className="text-3xl font-bold text-foreground">${totalDeposits.toFixed(2)}</div>
+                    <div className="text-3xl font-bold text-foreground flex items-center gap-1"><TokenIcon size={24} />{totalDeposits.toFixed(2)}</div>
                 </div>
             </div>
 
@@ -86,7 +87,7 @@ export default function DashboardPage() {
                                                 t.type === "game_loss" ? "text-destructive" : "text-primary"
                                             )}
                                         >
-                                            {t.type === "game_loss" ? "-" : "+"}${t.amount.toFixed(2)}
+                                            {t.type === "game_loss" ? "-" : "+"}<TokenIcon size={14} className="mx-0.5" />{t.amount.toFixed(2)}
                                         </td>
                                         <td className="px-6 py-4 text-muted-foreground">
                                             {new Date(t.createdAt).toLocaleDateString()}

@@ -8,6 +8,7 @@ interface User {
     email: string;
     name: string | null;
     balance: number;
+    createdAt?: string;
 }
 
 interface AuthContextType {
@@ -16,6 +17,7 @@ interface AuthContextType {
     signup: (email: string, name: string, password: string) => Promise<void>;
     googleLogin: (token: string) => Promise<void>;
     logout: () => Promise<void>;
+    refreshUser: () => Promise<void>;
     isAuthenticated: boolean;
     isLoading: boolean;
 }
@@ -47,6 +49,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setIsLoading(false);
         }
     };
+
+    // ... existing code ...
+
+
 
     const login = async (email: string, password: string) => {
         try {
@@ -133,6 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 signup,
                 googleLogin,
                 logout,
+                refreshUser: checkAuth,
                 isAuthenticated: !!user,
                 isLoading,
             }}
