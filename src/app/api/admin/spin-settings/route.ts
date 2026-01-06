@@ -15,10 +15,13 @@ export async function GET(request: Request) {
         // }
 
         // Fetch existing segments
-        // @ts-ignore
         let segments = await prisma.spinSegment.findMany({
             orderBy: { id: 'asc' }
         });
+
+        // Fetch max spins setting
+        const settings = await prisma.spinGameSettings.findFirst();
+        const maxSpinsPerDay = settings?.maxSpinsPerDay ?? 3;
 
         // Seed if empty
         if (segments.length === 0) {
@@ -43,7 +46,7 @@ export async function GET(request: Request) {
             segments = await prisma.spinSegment.findMany({ orderBy: { id: 'asc' } });
         }
 
-        return NextResponse.json(segments);
+        return NextResponse.json({ segments, maxSpinsPerDay });
     } catch (error) {
         console.error("Error fetching spin settings:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
@@ -60,7 +63,7 @@ export async function PUT(request: Request) {
         }
 
         const body = await request.json();
-        const { segments } = body;
+        const { segments, maxSpinsPerDay } = body;
 
         if (!Array.isArray(segments)) {
             return NextResponse.json({ error: "Invalid data format" }, { status: 400 });
@@ -83,6 +86,22 @@ export async function PUT(request: Request) {
                 })
             )
         );
+
+        // Update Max Spins
+        if (maxSpinsPerDay !== undefined) {
+            // Check if settings exist
+            const existing = await prisma.spinGameSettings.findFirst();
+            if (existing) {
+                await prisma.spinGameSettings.update({
+                    where: { id: existing.id },
+                    data: { maxSpinsPerDay: parseInt(maxSpinsPerDay) }
+                });
+            } else {
+                await prisma.spinGameSettings.create({
+                    data: { maxSpinsPerDay: parseInt(maxSpinsPerDay) }
+                });
+            }
+        }
 
         return NextResponse.json({ success: true, message: "Settings updated successfully" });
 

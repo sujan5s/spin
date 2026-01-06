@@ -57,3 +57,34 @@ export async function GET(request: Request) {
         );
     }
 }
+
+export async function POST(request: Request) {
+    try {
+        const cookieStore = await cookies();
+        const token = cookieStore.get("token");
+
+        if (!token) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const { payload } = await jwtVerify(token.value, JWT_SECRET);
+        const userId = Number(payload.userId);
+
+        const { title, message, type } = await request.json();
+
+        // @ts-ignore
+        const notification = await prisma.notification.create({
+            data: {
+                userId,
+                title,
+                message,
+                type: type || 'info'
+            }
+        });
+
+        return NextResponse.json(notification, { status: 200 });
+    } catch (error) {
+        console.error("Create notification error:", error);
+        return NextResponse.json({ error: "Failed to create notification" }, { status: 500 });
+    }
+}

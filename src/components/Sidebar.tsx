@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Wallet, Gamepad2, Settings, LogOut, CreditCard, Ticket, X } from "lucide-react";
+import { LayoutDashboard, Wallet, Gamepad2, Settings, LogOut, CreditCard, Ticket, X, Dices, Bomb, Eye, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 
@@ -12,6 +12,12 @@ const navigation = [
     { name: "Withdraw", href: "/withdraw", icon: CreditCard },
     { name: "Lucky Draw", href: "/lucky-draw", icon: Ticket },
     { name: "Spin & Win", href: "/spin", icon: Gamepad2 },
+    { name: "Roulette", href: "/roulette", icon: Dices },
+    { name: "Mines", href: "/mines", icon: Bomb },
+    { name: "Plinko", href: "/plinko", icon: LayoutDashboard }, // Reuse icon or find better (Grip has dots?)
+    { name: "Dragon Tower", href: "/dragontower", icon: Crown },
+    { name: "3 Cup Shuffle", href: "/shuffle", icon: Eye },
+    { name: "Slots", href: "/slots", icon: Gamepad2 },
 ];
 
 interface SidebarProps {

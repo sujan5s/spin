@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { LayoutDashboard, Users, LogOut, Trophy, Settings } from "lucide-react";
+import { LayoutDashboard, Users, LogOut, Trophy, Settings, Bomb, Eye, Crown } from "lucide-react";
 
 export default async function AdminDashboardLayout({
     children,
@@ -37,6 +37,22 @@ export default async function AdminDashboardLayout({
                     <Link href="/admin/spin-settings" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
                         <Settings className="w-5 h-5" />
                         Spin Settings
+                    </Link>
+                    <Link href="/admin/plinko-settings" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+                        <Settings className="w-5 h-5" />
+                        Plinko Settings
+                    </Link>
+                    <Link href="/admin/mines-settings" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+                        <Bomb className="w-5 h-5" />
+                        Mines Settings
+                    </Link>
+                    <Link href="/admin/slots-settings" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+                        <div className="w-5 h-5 flex items-center justify-center font-bold border border-current rounded text-[10px]">7</div>
+                        Slots Settings
+                    </Link>
+                    <Link href="/admin/dragontower-settings" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition-colors">
+                        <Crown className="w-5 h-5" />
+                        Dragon Tower Settings
                     </Link>
                 </nav>
 

@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Ticket, Trophy, RefreshCw, Loader2, AlertCircle } from "lucide-react";
+import LuckyDrawPopup from "@/components/lucky-draw/LuckyDrawPopup";
+import { toast } from "sonner";
 import { TokenIcon } from "@/components/TokenIcon";
 import { useWallet } from "@/context/WalletContext";
 import { useAuth } from "@/context/AuthContext";
@@ -23,6 +25,7 @@ export default function LuckyDrawPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [purchaseLoading, setPurchaseLoading] = useState<number | null>(null); // price of ticket being bought
     const [error, setError] = useState<string | null>(null);
+    const [popupData, setPopupData] = useState<{ isOpen: boolean, price: number } | null>(null);
 
     const fetchTickets = async () => {
         try {
@@ -64,12 +67,21 @@ export default function LuckyDrawPage() {
             if (res.ok) {
                 await refreshUser(); // Update balance in AuthContext
                 await fetchTickets();
+
+                // Show Popup
+                setPopupData({ isOpen: true, price });
+
+                // Show Toast
+                toast.success("Ticket Purchased Successfully!");
             } else {
                 setError(data.error || "Purchase failed");
+                toast.error(data.error || "Purchase failed");
             }
         } catch (error) {
             console.error("Purchase error:", error);
-            setError(error instanceof Error ? error.message : "Something went wrong");
+            const msg = error instanceof Error ? error.message : "Something went wrong";
+            setError(msg);
+            toast.error(msg);
         } finally {
             setPurchaseLoading(null);
         }
@@ -181,6 +193,14 @@ export default function LuckyDrawPage() {
                         </table>
                     </div>
                 </div>
+            )}
+            {/* Success Popup */}
+            {popupData && (
+                <LuckyDrawPopup
+                    isOpen={popupData.isOpen}
+                    price={popupData.price}
+                    onClose={() => setPopupData(null)}
+                />
             )}
         </div>
     );

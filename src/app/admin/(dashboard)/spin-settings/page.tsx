@@ -15,6 +15,7 @@ interface SpinSegment {
 
 export default function SpinSettingsPage() {
     const [segments, setSegments] = useState<SpinSegment[]>([]);
+    const [maxSpins, setMaxSpins] = useState<number>(3);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -29,7 +30,8 @@ export default function SpinSettingsPage() {
             const res = await fetch("/api/admin/spin-settings");
             if (!res.ok) throw new Error("Failed to fetch settings");
             const data = await res.json();
-            setSegments(data);
+            setSegments(data.segments);
+            if (data.maxSpinsPerDay !== undefined) setMaxSpins(data.maxSpinsPerDay);
         } catch (error) {
             setMessage({ type: "error", text: "Failed to load spin settings" });
         } finally {
@@ -44,7 +46,7 @@ export default function SpinSettingsPage() {
             const res = await fetch("/api/admin/spin-settings", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ segments }),
+                body: JSON.stringify({ segments, maxSpinsPerDay: maxSpins }),
             });
 
             if (!res.ok) throw new Error("Failed to save settings");
@@ -91,8 +93,22 @@ export default function SpinSettingsPage() {
             <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
                 <div className="p-6 border-b border-gray-800 flex justify-between items-center">
                     <h2 className="text-xl font-semibold text-gray-200">Segment Configuration</h2>
-                    <div className="text-sm text-gray-400">
-                        Total Probability Weight: <span className="text-white font-mono font-bold">{totalWeight}</span>
+
+                    <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-3 bg-gray-950 px-4 py-2 rounded-lg border border-gray-800">
+                            <span className="text-sm text-gray-400">Max Spins / Day:</span>
+                            <input
+                                type="number"
+                                min="1"
+                                value={maxSpins}
+                                onChange={(e) => setMaxSpins(Math.max(1, parseInt(e.target.value) || 0))}
+                                className="bg-transparent text-white font-bold w-12 text-center focus:outline-none border-b border-gray-700 focus:border-blue-500"
+                            />
+                        </div>
+
+                        <div className="text-sm text-gray-400">
+                            Total Probability Weight: <span className="text-white font-mono font-bold">{totalWeight}</span>
+                        </div>
                     </div>
                 </div>
 

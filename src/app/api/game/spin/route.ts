@@ -25,22 +25,35 @@ export async function POST(request: Request) {
 
         const { betAmount } = await request.json();
 
-        if (!betAmount || betAmount <= 0) {
+        if (!betAmount || betAmount < 10) {
             return NextResponse.json(
-                { error: "Invalid bet amount" },
+                { error: "Minimum bet amount is 10" },
                 { status: 400 }
             );
         }
 
         // Transaction to ensure atomicity
         const result = await prisma.$transaction(async (tx) => {
-            // 1. Get user and check balance
             const user = await tx.user.findUnique({
                 where: { id: userId },
             });
 
             if (!user) {
                 throw new Error("User not found");
+            }
+
+            // CHECK DAILY LIMIT
+            const settings = await tx.spinGameSettings.findFirst();
+            const maxSpins = settings?.maxSpinsPerDay ?? 3;
+
+            const now = new Date();
+            const lastSpin = new Date(user.lastSpinDate);
+            const isSameDay = now.toDateString() === lastSpin.toDateString();
+
+            let currentCount = isSameDay ? user.dailySpinCount : 0;
+
+            if (currentCount >= maxSpins) {
+                throw new Error("Daily spin limit reached");
             }
 
             if (user.balance < betAmount) {
@@ -59,7 +72,9 @@ export async function POST(request: Request) {
             if (segments.length === 0) {
                 // Potentially seed here if transaction limits allow, or just throw error/use static
                 // For now, let's assume if it's empty we use static but mapped to same structure
-                segments = SEGMENTS.map(s => ({ ...s, probability: 10 }));
+                // Fallback to config if no segments in DB (safety check)
+                // @ts-ignore
+                segments = SEGMENTS.map((s, idx) => ({ ...s, probability: 10, id: idx, isVisible: true }));
             }
 
             // Calculate Total Weight
@@ -93,6 +108,8 @@ export async function POST(request: Request) {
                 where: { id: userId },
                 data: {
                     balance: newBalance,
+                    dailySpinCount: currentCount + 1, // Increment count (reset handled by logic above, but here we just set based on calculated current)
+                    lastSpinDate: now
                 },
             });
 
@@ -113,28 +130,45 @@ export async function POST(request: Request) {
                 },
             });
 
-            // Create Notification
-            const notificationTitle = winAmount > 0 ? "Big Win!" : "Better Luck Next Time";
-            const notificationMessage = winAmount > 0
-                ? `You won $${winAmount.toFixed(2)} with a ${multiplier}x multiplier!`
-                : `You lost $${betAmount.toFixed(2)}. Try again!`;
-            const notificationType = winAmount > 0 ? "success" : "info";
+            // Notification will be triggered by client for better timing control
 
-            // @ts-ignore
-            await tx.notification.create({
-                data: {
-                    userId,
-                    title: notificationTitle,
-                    message: notificationMessage,
-                    type: notificationType,
+            // GENERATE REELS VISUALS
+            const SYMBOLS = ['cherry', 'lemon', 'watermelon', 'diamond', '7', 'bell'];
+            let resultReels: string[] = [];
+
+            if (winAmount > 0) {
+                // Determine symbol based on multiplier or just pick a "good" one
+                // High multiplier -> 'diamond' or '7'
+                // Low multiplier -> 'cherry' or 'lemon'
+                let winningSymbol = 'cherry';
+                if (multiplier >= 10) winningSymbol = 'diamond';
+                else if (multiplier >= 5) winningSymbol = '7';
+                else if (multiplier >= 2) winningSymbol = 'bell';
+                else winningSymbol = 'lemon';
+
+                resultReels = Array(5).fill(winningSymbol);
+            } else {
+                // Generate random reels ensuring no win (simple approach: just random)
+                // To be safe we should check, but for a simple game just random is usually enough to not trigger 5-in-a-row by accident often
+                for (let i = 0; i < 5; i++) {
+                    const randomSymbol = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+                    resultReels.push(randomSymbol);
                 }
-            });
+
+                // Safety check: Avoid accidental 5-of-a-kind on loss
+                const allSame = resultReels.every(r => r === resultReels[0]);
+                if (allSame) {
+                    // Force change one
+                    resultReels[0] = resultReels[0] === 'diamond' ? 'cherry' : 'diamond';
+                }
+            }
 
             return {
                 balance: updatedUser.balance,
                 segmentIndex,
                 multiplier,
                 winAmount,
+                reels: resultReels,
             };
         });
 

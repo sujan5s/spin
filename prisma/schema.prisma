@@ -20,11 +20,16 @@ model User {
   password  String?       // Optional for Google Auth users
   googleId  String?       @unique
   balance   Float         @default(0)
+  dailySpinCount Int      @default(0)
+  lastSpinDate DateTime   @default(now())
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
   transactions Transaction[]
   notifications Notification[]
   tickets       Ticket[]
+  minesGames    MinesGame[]
+  shuffleGames  ShuffleGame[]
+  dragonTowerGames DragonTowerGame[]
 }
 
 model OtpVerification {
@@ -73,4 +78,93 @@ model SpinSegment {
   textColor String
   probability Int    @default(0) // Percentage or weight
   isVisible Boolean  @default(true)
+}
+
+model PlinkoConfiguration {
+  id        Int      @id @default(autoincrement())
+  rows      Int
+  risk      String   // 'low', 'medium', 'high'
+  settings  String   // JSON string of { index: number, multiplier: number, probability: number }[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([rows, risk])
+}
+
+model MinesGame {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  betAmount   Float
+  minesCount  Int
+  mines       String   // JSON string: number[] (Server-side only!)
+  revealed    String   // JSON string: number[]
+  status      String   // "active", "won", "lost", "cashed_out"
+  multiplier  Float    @default(1.0)
+  profit      Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model SpinGameSettings {
+  id             Int @id @default(autoincrement())
+  maxSpinsPerDay Int @default(3)
+}
+
+model MinesConfiguration {
+  id        Int      @id @default(autoincrement())
+  settings  String   // JSON string: { "1": [multiplier1, ...], "3": [...] }
+  updatedAt DateTime @updatedAt
+}
+
+model SlotsConfiguration {
+  id        Int      @id @default(autoincrement())
+  settings  String   // JSON string: { weights: {...}, paytable: {...} }
+  updatedAt DateTime @updatedAt
+}
+
+model ShuffleGame {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  betAmount   Float
+  winningCup  Int      // 0, 1, 2
+  selectedCup Int?
+  status      String   // "active", "won", "lost"
+  multiplier  Float
+  payout      Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model DragonTowerGame {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
+  betAmount   Float
+  difficulty  String   // "easy", "medium", "hard", "expert", "master"
+  status      String   // "active", "cashed_out", "lost"
+  currentRow  Int      @default(0)
+  tower       String   // JSON: Array of arrays (0 = mine, 1 = safe)
+  multiplier  Float    @default(1.0) // Current multiplier
+  multipliers String?  // JSON: Array of multipliers for this specific game (Snapshot)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DragonTowerSettings {
+  id                Int      @id @default(autoincrement())
+  minBetEasy        Float    @default(10)
+  minBetMedium      Float    @default(10)
+  minBetHard        Float    @default(10)
+  minBetExpert      Float    @default(10)
+  minBetMaster      Float    @default(10)
+  easyMultipliers   String   // JSON: number[]
+  mediumMultipliers String   // JSON: number[]
+  hardMultipliers   String   // JSON: number[]
+  expertMultipliers String   // JSON: number[]
+  masterMultipliers String   // JSON: number[]
+  updatedAt         DateTime @updatedAt
 }

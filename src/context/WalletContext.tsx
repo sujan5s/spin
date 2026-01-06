@@ -8,6 +8,7 @@ interface WalletContextType {
     addFunds: (amount: number) => Promise<void>;
     withdrawFunds: (amount: number) => Promise<void>;
     updateBalance: (amount: number) => void; // amount can be negative
+    setBalance: (amount: number) => void; // Direct set
     refreshTransactions: () => Promise<void>;
     transactions: Transaction[];
     isLoading: boolean;
@@ -96,13 +97,17 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     };
 
     const updateBalance = (amount: number) => {
+        if (typeof amount !== 'number' || isNaN(amount)) {
+            console.error("Invalid amount passed to updateBalance:", amount);
+            return;
+        }
         // This is for local optimistic updates during games
         // Real sync should happen via API calls in the game logic
         setBalance((prev) => prev + amount);
     };
 
     return (
-        <WalletContext.Provider value={{ balance, addFunds, withdrawFunds, updateBalance, refreshTransactions: fetchTransactions, transactions, isLoading }}>
+        <WalletContext.Provider value={{ balance, addFunds, withdrawFunds, updateBalance, setBalance, refreshTransactions: fetchTransactions, transactions, isLoading }}>
             {children}
         </WalletContext.Provider>
     );

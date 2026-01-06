@@ -24,6 +24,13 @@ export default function SpinPage() {
     const [error, setError] = useState<string | null>(null);
     const [history, setHistory] = useState<{ multiplier: number; win: boolean }[]>([]);
     const [segments, setSegments] = useState<SpinSegment[]>([]);
+
+    // Spin Limit State
+    const [spinsUsed, setSpinsUsed] = useState(0);
+    const [maxSpins, setMaxSpins] = useState(3);
+    const [timeUntilReset, setTimeUntilReset] = useState(0);
+    const [formattedTime, setFormattedTime] = useState("");
+
     const [loading, setLoading] = useState(true);
     const wheelRef = useRef<HTMLDivElement>(null);
 
@@ -38,7 +45,12 @@ export default function SpinPage() {
         fetch("/api/admin/spin-settings")
             .then(res => res.json())
             .then(data => {
-                if (Array.isArray(data)) {
+                if (data.segments && Array.isArray(data.segments)) {
+                    setSegments(data.segments);
+                    if (data.maxSpinsPerDay !== undefined) {
+                        setMaxSpins(data.maxSpinsPerDay);
+                    }
+                } else if (Array.isArray(data)) {
                     setSegments(data);
                 } else {
                     console.error("Failed to load segments", data);
@@ -50,9 +62,57 @@ export default function SpinPage() {
         return () => clearInterval(interval);
     }, []);
 
+    // Fetch Spin Status
+    const fetchSpinStatus = async () => {
+        try {
+            const res = await fetch("/api/game/spin/status");
+            const data = await res.json();
+            if (!data.error) {
+                setSpinsUsed(data.spinsUsed);
+                setMaxSpins(data.maxSpins);
+                setTimeUntilReset(data.timeUntilReset);
+            }
+        } catch (e) {
+            console.error("Failed to fetch spin status", e);
+        }
+    };
+
+    useEffect(() => {
+        fetchSpinStatus();
+    }, [balance]); // Refetch on balance change (often means a spin happened) or just on mount/result
+
+    // Timer Logic
+    useEffect(() => {
+        if (timeUntilReset > 0) {
+            const timer = setInterval(() => {
+                setTimeUntilReset(prev => {
+                    if (prev <= 1000) {
+                        fetchSpinStatus(); // Refresh when timer hits 0
+                        return 0;
+                    }
+                    return prev - 1000;
+                });
+            }, 1000);
+            return () => clearInterval(timer);
+        }
+    }, [timeUntilReset]);
+
+    useEffect(() => {
+        if (timeUntilReset > 0) {
+            const hours = Math.floor((timeUntilReset % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((timeUntilReset % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((timeUntilReset % (1000 * 60)) / 1000);
+            setFormattedTime(`${hours}h ${minutes}m ${seconds}s`);
+        } else {
+            setFormattedTime("");
+        }
+    }, [timeUntilReset]);
+
+    const spinsLeft = Math.max(0, maxSpins - spinsUsed);
+
     const handleSpin = async () => {
         const bet = parseFloat(betAmount);
-        if (!bet || bet <= 0 || bet > balance) return;
+        if (!bet || bet < 10 || bet > balance) return;
 
         setIsSpinning(true);
         setResult(null);
@@ -87,7 +147,7 @@ export default function SpinPage() {
 
             setRotation(newRotation);
 
-            setTimeout(() => {
+            setTimeout(async () => {
                 setIsSpinning(false);
                 setResult({ multiplier, winAmount });
 
@@ -97,6 +157,27 @@ export default function SpinPage() {
                 const netChange = winAmount - bet;
                 updateBalance(netChange);
                 refreshTransactions(); // Update transaction history
+
+                // Trigger Global Notification
+                try {
+                    await fetch("/api/notifications", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            title: winAmount > 0 ? "Mega Spin Win!" : "Mega Spin Result",
+                            message: winAmount > 0
+                                ? `You won $${winAmount.toFixed(2)} with a ${multiplier}x multiplier!`
+                                : `You lost $${bet.toFixed(2)}. Better luck next time!`,
+                            type: winAmount > 0 ? "success" : "info"
+                        })
+                    });
+                } catch (e) {
+                    console.error("Failed to send notification", e);
+                }
+
+                // Update Spin Status locally
+                setSpinsUsed(prev => prev + 1);
+
             }, 5000);
 
         } catch (err: any) {
@@ -225,11 +306,27 @@ export default function SpinPage() {
                                 <span className="font-medium">Balance</span>
                             </div>
                             <span className="text-2xl font-bold text-white font-mono">
-                                ${balance.toFixed(2)}
+                                {balance.toFixed(2)}
                             </span>
                         </div>
 
                         <div className="space-y-4">
+                            {/* Daily Limit Info */}
+                            <div className="bg-zinc-800/50 rounded-xl p-4 text-center border border-zinc-700">
+                                {spinsLeft > 0 ? (
+                                    <>
+                                        <p className="text-gray-400 text-sm mb-1 uppercase tracking-wider font-bold">Daily Spins Left</p>
+                                        <p className="text-2xl font-black text-white">{spinsLeft} <span className="text-gray-500 text-lg">/ {maxSpins}</span></p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="text-red-400 text-sm mb-1 uppercase tracking-wider font-bold">Daily Limit Reached</p>
+                                        <p className="text-xs text-gray-400 mb-2">Next refresh in:</p>
+                                        <p className="text-xl font-mono text-white font-bold">{formattedTime}</p>
+                                    </>
+                                )}
+                            </div>
+
                             <div className="relative">
                                 <input
                                     type="number"
@@ -263,6 +360,12 @@ export default function SpinPage() {
                                 </p>
                             )}
 
+                            {parseFloat(betAmount) < 10 && betAmount !== "" && (
+                                <p className="text-red-500 text-xs flex items-center gap-1">
+                                    <AlertCircle className="h-3 w-3" /> Minimum bet is 10
+                                </p>
+                            )}
+
                             {error && (
                                 <p className="text-red-500 text-xs flex items-center gap-1">
                                     <AlertCircle className="h-3 w-3" /> {error}
@@ -271,7 +374,7 @@ export default function SpinPage() {
 
                             <button
                                 onClick={handleSpin}
-                                disabled={isSpinning || !betAmount || parseFloat(betAmount) <= 0 || parseFloat(betAmount) > balance}
+                                disabled={isSpinning || !betAmount || parseFloat(betAmount) < 10 || parseFloat(betAmount) > balance || spinsLeft <= 0}
                                 className="w-full py-4 bg-gradient-to-b from-yellow-400 to-yellow-600 hover:from-yellow-300 hover:to-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed text-black font-black text-xl rounded-xl shadow-[0_4px_0_rgb(161,98,7)] active:shadow-none active:translate-y-[4px] transition-all uppercase tracking-wider"
                             >
                                 {isSpinning ? "Spinning..." : "SPIN NOW"}
